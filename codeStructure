@@ -1,0 +1,64 @@
+Optimized tool selectionI'll help you understand this codebase. Let me gather some key information about your project structure.    
+
+Read [](file:///d%3A/Sharthi/docker-compose.yml#1-1), lines 1 to 50
+
+Read [](file:///d%3A/Sharthi/backend/src/app.ts#1-1), lines 1 to 50
+
+Read [](file:///d%3A/Sharthi/README.md#1-1), lines 1 to 100
+
+Read [](file:///d%3A/Sharthi/frontend/src/app/page.tsx)
+
+## 📊 Project Overview
+
+This is **Human Problem Solver System (HPSS)** – a full-stack platform where users post real problems and get solutions from experts, with AI assistance. Think of it as a marketplace for advice and consultation.
+
+### **Core Features:**
+- **Problems & Solutions** – Users post problems, experts offer solutions
+- **Expert Consultations** – Book 1-on-1 calls with verified experts  
+- **AI Matching** – AI categorizes problems and suggests the right experts
+- **Trust System** – Reputation scores, voting, expert verification badges
+- **Real-time Notifications** – Users stay updated on interactions
+- **Admin Dashboard** – Moderate content, manage platform
+
+---
+
+## **🏗️ Architecture**
+
+**Frontend (Next.js)**
+- Modern React app with dark mode support
+- Pages: Dashboard, Ask Problems, Browse Experts, Consultations, Notifications
+- Tailwind CSS for styling
+
+**Backend (Express.js)**
+- REST API with 9 feature modules:
+  - `/auth` – Login/signup
+  - users – User profiles
+  - `/problems` – Problem CRUD
+  - `/experts` – Expert profiles
+  - `/consultations` – Booking system
+  - `/ai` – AI recommendations
+  - `/categories` – Problem categories
+  - `/notifications` – Real-time updates
+  - `/reports` – Content moderation
+
+**Database (PostgreSQL)**
+- Prisma ORM for type-safe queries
+- Includes migrations and seed data
+
+**Infrastructure**
+- Docker Compose for local development
+- Nginx reverse proxy for production
+- Rate limiting & security headers
+
+---
+
+## **What would you like to explore?**
+
+I can help you understand:
+- 🔍 A specific module (e.g., how consultations work)
+- 📂 A particular file or component
+- 🔄 Data flow (how problems → experts → solutions)
+- 🛠️ A specific feature or API endpoint
+- 🐛 Debug something specific
+
+What interests you most?

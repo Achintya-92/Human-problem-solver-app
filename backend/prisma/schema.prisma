@@ -1,0 +1,329 @@
+generator client {
+  provider = "prisma-client-js"
+  engineType = "binary"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Seed configuration
+model Seed {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+}
+
+enum ExperienceType {
+  PERSONALLY_EXPERIENCED
+  MENTOR
+  EXPERT
+}
+
+enum VoteTargetType {
+  SOLUTION_HELPFUL
+  SOLUTION_WORKED_FOR_ME
+  SOLUTION_MISLEADING
+  PROBLEM_UPVOTE
+}
+
+enum UserRole {
+  USER
+  EXPERT
+  ADMIN
+}
+
+enum ConsultationType {
+  CHAT
+  CALL
+  VIDEO
+}
+
+enum ConsultationStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+enum NotificationType {
+  SOLUTION_LIKED
+  SOLUTION_REPLY
+  MENTION
+  SOLUTION_ACCEPTED
+  EXPERT_RESPONSE
+  FOLLOW
+  CONSULTATION_UPDATE
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWING
+  RESOLVED
+  DISMISSED
+}
+
+model User {
+  id             String    @id @default(uuid())
+  email          String    @unique
+  passwordHash   String
+  name           String
+  username       String?   @unique
+  bio            String?   @db.VarChar(500)
+  avatarUrl      String?
+  role           UserRole  @default(USER)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  problems       Problem[]
+  solutions      Solution[]
+  comments       Comment[]
+  votes          Vote[]
+  userBadges     UserBadge[]
+  trustScore     TrustScore?
+  
+  expert         Expert?
+  consultations  Consultation[]
+  
+  sentNotifications     Notification[] @relation("sentBy")
+  receivedNotifications Notification[] @relation("receivedBy")
+  
+  reportsSubmitted Report[] @relation("submittedBy")
+  reportsReceived  Report[] @relation("reportedUser")
+}
+
+model Category {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  slug      String    @unique
+  createdAt DateTime  @default(now())
+
+  problems   Problem[]
+  experts    Expert[]
+}
+
+model Problem {
+  id            String    @id @default(uuid())
+  title         String
+  description   String
+  tags          String[]  @default([])
+  emotionTag    String?   @db.VarChar(64)
+  anonymous     Boolean   @default(false)
+  imageUrl      String?
+  voiceUrl      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+
+  categoryId    String
+  category      Category  @relation(fields: [categoryId], references: [id])
+
+  solutions     Solution[]
+  comments      Comment[]
+  votes         Vote[]
+
+  @@index([createdAt])
+  @@index([categoryId, createdAt])
+  @@index([userId, createdAt])
+}
+
+model Solution {
+  id             String         @id @default(uuid())
+  content        String
+  practicalSteps String
+  mistakes       String?
+  timeline       String?
+  results        String?
+  proofLinks     String[]       @default([])
+  videoUrl       String?
+  experienceType ExperienceType @default(PERSONALLY_EXPERIENCED)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  userId         String
+  user           User           @relation(fields: [userId], references: [id])
+
+  problemId      String
+  problem        Problem        @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  comments       Comment[]
+  votes          Vote[]
+
+  @@index([createdAt])
+  @@index([problemId, createdAt])
+  @@index([userId, createdAt])
+}
+
+model Comment {
+  id         String    @id @default(uuid())
+  content    String
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  userId     String
+  user       User      @relation(fields: [userId], references: [id])
+
+  problemId  String?
+  problem    Problem?  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  solutionId String?
+  solution   Solution? @relation(fields: [solutionId], references: [id], onDelete: Cascade)
+
+  @@index([problemId, createdAt])
+  @@index([solutionId, createdAt])
+}
+
+model Vote {
+  id          String         @id @default(uuid())
+  targetType  VoteTargetType
+  createdAt   DateTime       @default(now())
+
+  userId      String
+  user        User           @relation(fields: [userId], references: [id])
+
+  problemId   String?
+  problem     Problem?       @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  solutionId  String?
+  solution    Solution?      @relation(fields: [solutionId], references: [id], onDelete: Cascade)
+
+  @@index([targetType, createdAt])
+  @@index([problemId, targetType])
+  @@index([solutionId, targetType])
+  @@unique([userId, targetType, problemId])
+  @@unique([userId, targetType, solutionId])
+}
+
+model Badge {
+  id          String      @id @default(uuid())
+  name        String      @unique
+  description String?
+  createdAt   DateTime    @default(now())
+
+  userBadges  UserBadge[]
+}
+
+model UserBadge {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  badgeId   String
+  badge     Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeId])
+}
+
+model TrustScore {
+  id                 String   @id @default(uuid())
+  score              Int      @default(0)
+  helpfulVotes       Int      @default(0)
+  workedForMeVotes   Int      @default(0)
+  misleadingReports  Int      @default(0)
+  updatedAt          DateTime @updatedAt
+
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([score])
+}
+
+model Expert {
+  id                    String   @id @default(uuid())
+  specializations       String[] @default([])
+  yearsOfExperience     Int      @default(0)
+  hourlyRate            Float    @default(0)
+  bio                   String?  @db.VarChar(1000)
+  profilePhotoUrl       String?
+  isVerified            Boolean  @default(false)
+  whatsappLink          String?
+  contactEmail          String?
+  bookingLink           String?
+  consultationTypes     ConsultationType[] @default([CHAT])
+  averageRating         Float    @default(5)
+  totalConsultations    Int      @default(0)
+  completedConsultations Int     @default(0)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  userId                String   @unique
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  consultations         Consultation[]
+  category              Category? @relation(fields: [categoryId], references: [id])
+  categoryId            String?
+
+  @@index([categoryId])
+  @@index([isVerified])
+  @@index([averageRating])
+}
+
+model Consultation {
+  id                String               @id @default(uuid())
+  type              ConsultationType
+  status            ConsultationStatus   @default(PENDING)
+  scheduledAt       DateTime?
+  completedAt       DateTime?
+  notes             String?
+  duration          Int? // in minutes
+  meetingLink       String?
+  feedback          String?
+  rating            Float?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  expertId          String
+  expert            Expert    @relation(fields: [expertId], references: [id], onDelete: Cascade)
+  
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([expertId, status])
+  @@index([userId, status])
+  @@index([scheduledAt])
+}
+
+model Notification {
+  id           String               @id @default(uuid())
+  type         NotificationType
+  message      String
+  read         Boolean              @default(false)
+  link         String?
+  createdAt    DateTime @default(now())
+
+  sentById     String
+  sentBy       User     @relation("sentBy", fields: [sentById], references: [id], onDelete: Cascade)
+  
+  receivedById String
+  receivedBy   User     @relation("receivedBy", fields: [receivedById], references: [id], onDelete: Cascade)
+
+  @@index([receivedById, read])
+  @@index([createdAt])
+  @@index([type])
+}
+
+model Report {
+  id           String       @id @default(uuid())
+  reason       String
+  description  String?
+  status       ReportStatus @default(PENDING)
+  resolution   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  submittedById String
+  submittedBy   User     @relation("submittedBy", fields: [submittedById], references: [id], onDelete: Cascade)
+  
+  reportedUserId String
+  reportedUser   User     @relation("reportedUser", fields: [reportedUserId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([createdAt])
+}
+
