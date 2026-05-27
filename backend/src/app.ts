@@ -19,6 +19,11 @@ import { reportRoutes } from "./routes/reportRoutes";
 export function createApp() {
   const app = express();
 
+  
+  app.get("/healthz", (req, res) => {
+  res.status(200).send("OK");
+});
+
   app.use(helmet());
   app.use(
     cors({
