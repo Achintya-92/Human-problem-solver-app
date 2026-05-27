@@ -3,7 +3,8 @@ import { createApp } from "./app";
 
 const app = createApp();
 
-app.listen(env.PORT, "0.0.0.0", () => {
-  console.log(`API running on ${env.PORT}`);
-});
+const port = process.env.PORT || env.PORT || 10000;
 
+app.listen(port, () => {
+  console.log(`API running on port ${port}`);
+});
