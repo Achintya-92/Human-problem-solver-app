@@ -22,7 +22,7 @@ export const getUnreadCount = async (req: Request, res: Response) => {
 };
 
 export const markAsRead = async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = String(req.params.id);
   const userId = req.auth!.userId;
 
   // Verify ownership
@@ -40,7 +40,7 @@ export const markAllAsRead = async (req: Request, res: Response) => {
 };
 
 export const deleteNotification = async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = String(req.params.id);
   const userId = req.auth!.userId;
 
   // Verify ownership before deleting

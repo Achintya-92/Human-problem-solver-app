@@ -27,7 +27,7 @@ export const getReports = async (req: Request, res: Response) => {
 };
 
 export const getReport = async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = String(req.params.id);
   const report = await reportService.getReport(id);
 
   if (!report) {
@@ -38,7 +38,7 @@ export const getReport = async (req: Request, res: Response) => {
 };
 
 export const updateReportStatus = async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = String(req.params.id);
   const { status, resolution } = req.body;
 
   const updated = await reportService.updateReportStatus(id, status, resolution);
@@ -46,7 +46,7 @@ export const updateReportStatus = async (req: Request, res: Response) => {
 };
 
 export const getUserReports = async (req: Request, res: Response) => {
-  const { userId } = req.params;
+  const userId = String(req.params.userId);
   const reports = await reportService.getUserReports(userId);
   return res.json({ data: { reports } });
 };

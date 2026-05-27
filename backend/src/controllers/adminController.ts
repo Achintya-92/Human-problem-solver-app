@@ -1,201 +1,333 @@
-import type { Request, Response } from "express";
+import type { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import * as expertService from "../services/expertService";
 import * as reportService from "../services/reportService";
 import { prisma } from "../db/prisma";
+import { UserRole } from "@prisma/client";
+
+// Helper function
+const getParam = (param: string | string[] | undefined): string => {
+  if (!param) throw new Error("Missing parameter");
+  return Array.isArray(param) ? param[0] : param;
+};
 
 // Middleware to check admin role
-export async function requireAdmin(req: Request, res: Response, next: any) {
+export async function requireAdmin(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
   try {
     const userId = req.auth?.userId;
+
     if (!userId) {
-      return res.status(401).json({ error: { code: "UNAUTHORIZED", message: "Not authenticated" } });
+      return res.status(401).json({
+        error: {
+          code: "UNAUTHORIZED",
+          message: "Not authenticated",
+        },
+      });
     }
 
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (user?.role !== "ADMIN") {
-      return res.status(403).json({ error: { code: "FORBIDDEN", message: "Admin access required" } });
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (user?.role !== UserRole.ADMIN) {
+      return res.status(403).json({
+        error: {
+          code: "FORBIDDEN",
+          message: "Admin access required",
+        },
+      });
     }
 
     next();
   } catch (error) {
-    res.status(500).json({ error: { code: "ERROR", message: "Internal server error" } });
+    return res.status(500).json({
+      error: {
+        code: "ERROR",
+        message: "Internal server error",
+      },
+    });
   }
 }
 
-// Admin dashboard stats
-export const getDashboardStats = async (req: Request, res: Response) => {
-  try {
-    const [totalUsers, totalProblems, totalSolutions, totalExperts, pendingReports] = await Promise.all([
-      prisma.user.count(),
-      prisma.problem.count(),
-      prisma.solution.count(),
-      prisma.expert.count(),
-      prisma.report.count({ where: { status: "PENDING" } }),
-    ]);
-
-    return res.json({
-      data: {
-        stats: {
-          totalUsers,
-          totalProblems,
-          totalSolutions,
-          totalExperts,
-          pendingReports,
-          activeExperts: await prisma.expert.count({ where: { isVerified: true } }),
-          totalConsultations: await prisma.consultation.count(),
-          completedConsultations: await prisma.consultation.count({ where: { status: "COMPLETED" } }),
-        },
-      },
-    });
-  } catch (error) {
-    res.status(500).json({ error: { code: "ERROR", message: "Failed to fetch stats" } });
-  }
-};
-
 // Verify expert
 export const verifyExpert = async (req: Request, res: Response) => {
-  const { expertId } = req.params;
-
   try {
-    const expert = await expertService.updateExpertVerification(expertId, true);
-    return res.json({ data: { expert } });
+    const expertId = String(getParam(req.params.expertId));
+      
+    const expert = await expertService.updateExpertVerification(
+      expertId,
+      true
+    );
+
+    return res.json({
+      data: { expert },
+    });
   } catch (error) {
-    res.status(500).json({ error: { code: "ERROR", message: "Failed to verify expert" } });
+    return res.status(500).json({
+      error: {
+        code: "ERROR",
+        message: "Failed to verify expert",
+      },
+    });
   }
 };
 
 // Reject expert verification
-export const rejectExpertVerification = async (req: Request, res: Response) => {
-  const { expertId } = req.params;
-
+export const rejectExpertVerification = async (
+  req: Request,
+  res: Response
+) => {
   try {
-    const expert = await expertService.updateExpertVerification(expertId, false);
-    return res.json({ data: { expert } });
+    const expertId = String(getParam(req.params.expertId));
+
+    const expert = await expertService.updateExpertVerification(
+      expertId,
+      false
+    );
+
+    return res.json({
+      data: { expert },
+    });
   } catch (error) {
-    res.status(500).json({ error: { code: "ERROR", message: "Failed to reject expert" } });
-  }
-};
-
-// Get all users
-export const getUsers = async (req: Request, res: Response) => {
-  const query = z
-    .object({
-      role: z.string().optional(),
-      page: z.coerce.number().int().min(1).default(1),
-      limit: z.coerce.number().int().min(1).max(50).default(10),
-    })
-    .parse(req.query);
-
-  const skip = (query.page - 1) * query.limit;
-  const where: any = {};
-  if (query.role) where.role = query.role;
-
-  const [users, total] = await Promise.all([
-    prisma.user.findMany({
-      where,
-      skip,
-      take: query.limit,
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        username: true,
-        role: true,
-        createdAt: true,
-        trustScore: true,
-        _count: { select: { problems: true, solutions: true } },
+    return res.status(500).json({
+      error: {
+        code: "ERROR",
+        message: "Failed to reject expert",
       },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.user.count({ where }),
-  ]);
-
-  return res.json({ data: { users, total, page: query.page, limit: query.limit } });
-};
-
-// Suspend/Ban user
-export const suspendUser = async (req: Request, res: Response) => {
-  const { userId } = req.params;
-  const { reason } = req.body;
-
-  // Note: Add suspension field to User model in production
-  // For now, we can mark with a flag or create a suspension record
-
-  return res.json({ data: { ok: true, message: "User suspended" } });
-};
-
-// Get pending reports
-export const getPendingReports = async (req: Request, res: Response) => {
-  const query = z
-    .object({
-      page: z.coerce.number().int().min(1).default(1),
-      limit: z.coerce.number().int().min(1).max(50).default(10),
-    })
-    .parse(req.query);
-
-  const result = await reportService.getReports(query.page, query.limit, "PENDING");
-  return res.json({ data: result });
+    });
+  }
 };
 
 // Resolve report
 export const resolveReport = async (req: Request, res: Response) => {
-  const { reportId } = req.params;
-  const { action, resolution } = req.body; // action: "dismiss" | "suspend" | "warn"
-
   try {
-    const report = await reportService.updateReportStatus(reportId, "RESOLVED", resolution);
+    const reportId = String(getParam(req.params.reportId));
 
-    // TODO: Implement action (suspend user, send warning, etc.)
+    const { resolution } = req.body;
 
-    return res.json({ data: { report } });
-  } catch (error) {
-    res.status(500).json({ error: { code: "ERROR", message: "Failed to resolve report" } });
-  }
-};
+    const report = await reportService.updateReportStatus(
+      reportId,
+      "RESOLVED",
+      resolution
+    );
 
-// Get all categories
-export const getCategories = async (req: Request, res: Response) => {
-  try {
-    const categories = await prisma.category.findMany({
-      include: { _count: { select: { problems: true, experts: true } } },
-      orderBy: { name: "asc" },
+    return res.json({
+      data: { report },
     });
-    return res.json({ data: { categories } });
   } catch (error) {
-    res.status(500).json({ error: { code: "ERROR", message: "Failed to fetch categories" } });
-  }
-};
-
-// Create category
-export const createCategory = async (req: Request, res: Response) => {
-  const { name } = req.body;
-  const slug = name.toLowerCase().replace(/\s+/g, "-");
-
-  try {
-    const category = await prisma.category.create({
-      data: { name, slug },
+    return res.status(500).json({
+      error: {
+        code: "ERROR",
+        message: "Failed to resolve report",
+      },
     });
-    return res.status(201).json({ data: { category } });
-  } catch (error) {
-    res.status(400).json({ error: { code: "ERROR", message: "Category already exists" } });
   }
 };
 
 // Delete category
 export const deleteCategory = async (req: Request, res: Response) => {
-  const { categoryId } = req.params;
-
   try {
-    // Check if category has problems
-    const problemCount = await prisma.problem.count({ where: { categoryId } });
+    const categoryId = String(getParam(req.params.categoryId));
+
+    const problemCount = await prisma.problem.count({
+      where: { categoryId },
+    });
+
     if (problemCount > 0) {
-      return res.status(400).json({ error: { code: "ERROR", message: "Category has problems, cannot delete" } });
+      return res.status(400).json({
+        error: {
+          code: "ERROR",
+          message: "Category has problems, cannot delete",
+        },
+      });
     }
 
-    await prisma.category.delete({ where: { id: categoryId } });
-    return res.json({ data: { ok: true } });
+    await prisma.category.delete({
+      where: { id: categoryId },
+    });
+
+    return res.json({
+      data: { ok: true },
+    });
   } catch (error) {
-    res.status(500).json({ error: { code: "ERROR", message: "Failed to delete category" } });
+    return res.status(500).json({
+      error: {
+        code: "ERROR",
+        message: "Failed to delete category",
+      },
+    });
+  }
+};
+
+export const getPendingReports = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const reports = await prisma.report.findMany({
+      where: {
+        status: "PENDING",
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    return res.json({
+      data: { reports },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      error: {
+        code: "ERROR",
+        message: "Failed to fetch reports",
+      },
+    });
+  }
+};
+
+
+export const getDashboardStats = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const users = await prisma.user.count();
+    const problems = await prisma.problem.count();
+    const experts = await prisma.expert.count();
+    const reports = await prisma.report.count({
+      where: {
+        status: "PENDING",
+      },
+    });
+
+    return res.json({
+      data: {
+        users,
+        problems,
+        experts,
+        reports,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      error: {
+        code: "ERROR",
+        message: "Failed to fetch dashboard stats",
+      },
+    });
+  }
+};
+
+
+export const getUsers = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const users = await prisma.user.findMany({
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    return res.json({
+      data: { users },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      error: {
+        code: "ERROR",
+        message: "Failed to fetch users",
+      },
+    });
+  }
+};
+
+
+export const suspendUser = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const userId = getParam(req.params.userId);
+
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        isSuspended: true,
+      },
+    });
+
+    return res.json({
+      data: { user },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      error: {
+        code: "ERROR",
+        message: "Failed to suspend user",
+      },
+    });
+  }
+};
+
+export const getCategories = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const categories = await prisma.category.findMany({
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    return res.json({
+      data: { categories },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      error: {
+        code: "ERROR",
+        message: "Failed to fetch categories",
+      },
+    });
+  }
+};
+
+export const createCategory = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const schema = z.object({
+      name: z.string().min(2),
+      slug: z.string().min(2),
+    });
+
+    const body = schema.parse(req.body);
+
+    const category = await prisma.category.create({
+      data: {
+        name: body.name,
+        slug: body.slug,
+      },
+    });
+
+    return res.status(201).json({
+      data: { category },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      error: {
+        code: "ERROR",
+        message: "Failed to create category",
+      },
+    });
   }
 };
