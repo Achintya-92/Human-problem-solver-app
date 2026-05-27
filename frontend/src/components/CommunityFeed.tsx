@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { InfiniteScroll } from "react-infinite-scroll-component";
+import InfiniteScroll from "react-infinite-scroll-component";
 import toast from "react-hot-toast";
 import { CommunityProblemCard } from "@/components/CommunityProblemCard";
 import { api } from "@/lib/api";
