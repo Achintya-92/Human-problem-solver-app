@@ -3,8 +3,7 @@ import { createApp } from "./app";
 
 const app = createApp();
 
-app.listen(env.PORT, () => {
-  // eslint-disable-next-line no-console
-  console.log(`API listening on http://localhost:${env.PORT}`);
+app.listen(env.PORT, "0.0.0.0", () => {
+  console.log(`API running on ${env.PORT}`);
 });
 
