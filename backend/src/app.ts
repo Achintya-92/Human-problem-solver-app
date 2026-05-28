@@ -39,6 +39,11 @@ export function createApp() {
 
   app.get("/health", (_req, res) => res.json({ ok: true }));
 
+  app.get("/", (req, res) => {
+  res.json({
+    message: "Sharthi API running successfully",
+  });
+});
   app.use("/api/auth", authRoutes);
   app.use("/api/users", userRoutes);
   app.use("/api/categories", categoryRoutes);
